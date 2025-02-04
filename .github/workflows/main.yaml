@@ -114,7 +114,6 @@ jobs:
       id: create_pr
       if: github.event_name != 'pull_request'
       run: |
-        gh auth status
         # Configure git with the devops username and email
         git config --global user.name "${{ env.DEVOPS_USERNAME }}"
         git config --global user.email ${{ env.DEVOPS_EMAIL }}
@@ -141,8 +140,10 @@ jobs:
       run: |
         echo "Waiting for GitHub sync..."
         sleep 15
+        PR_NUMBER=$(echo "${{ steps.create_pr.outputs.pr_url }}" | grep -oE '[0-9]+$')
+        echo "PR_NUMBER=$PR_NUMBER"
         echo "Waiting for Pull-Request: ${{ steps.create_pr.outputs.pr_url }} status check(s)..."
-        output=$(timeout 45m gh pr checks --watch "${{ steps.create_pr.outputs.pr_url }}" 2>&1)
+        output=$(timeout 45m gh pr checks --watch "$PR_NUMBER" 2>&1)
         return_code=$?
         echo "$output" | tail -n 10
         if [[ $return_code -ne 0 ]]; then
