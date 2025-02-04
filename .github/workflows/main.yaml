@@ -206,6 +206,7 @@ jobs:
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
       - name: Push Docker image
+        if: github.event_name != 'pull_request'
         working-directory: ${{ env.PROJECT_DIR }}
         env:
           IMAGE: ${{ env.IMAGE }}
