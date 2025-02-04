@@ -120,17 +120,17 @@ jobs:
         # Create a new branch for version bump
         BRANCH_NAME="bump-version-${{ steps.semver.outputs.new_version }}"
         git checkout -b $BRANCH_NAME
+        # Commit and push changes
+        git status
+        git diff
+        git add ${{ env.PROJECT_DIR }}/pom.xml
+        git commit -m "Bump version to ${{ steps.semver.outputs.new_version }}"
 
     - name: Create PR
       if: github.event_name != 'pull_request'
       run: |
         git config --global user.name ${{ env.GITHUB_ACTOR }}
         git config --global user.email ${{ secrets.GITHUB_TOKEN }}
-        # Commit and push changes
-        git status
-        git diff
-        git add ${{ env.PROJECT_DIR }}/pom.xml
-        git commit -m "Bump version to ${{ steps.semver.outputs.new_version }}"
         git push origin $BRANCH_NAME
         pr_url=$(gh pr create \
           --title "Bump version to ${{ steps.semver.outputs.new_version }}" \
