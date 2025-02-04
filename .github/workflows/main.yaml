@@ -36,11 +36,11 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      checks: read
       packages: write
       pull-requests: write
     outputs:
-      projects: ${{ steps.semver.outputs.old_version }}
-      date_tag: ${{ steps.semver.outputs.new_version }}
+      new_version: ${{ steps.semver.outputs.new_version }}
 
     steps:
     - name: Checkout
@@ -73,15 +73,13 @@ jobs:
           minor)  major=$(get_version majorVersion); minor=$(get_version nextMinorVersion); patch=0 ;;
           *)      major=$(get_version majorVersion); minor=$(get_version minorVersion); patch=$(get_version nextIncrementalVersion);;
         esac
-        echo "old_version=$OLD_VERSION" >> $GITHUB_OUTPUT
         NEW_VERSION="$major.$minor.$patch"
-        # If the event is a pull request, append -SNAPSHOT
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+        # Ensure release are performed from 'master' only. For other branches, append -SNAPSHOT
+        if [[ "${{ github.ref_name }}" != "master" ]]; then
           NEW_VERSION="${NEW_VERSION}-SNAPSHOT"
         fi
         echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-        echo "::notice title=Old Version::$OLD_VERSION"
-        echo "::notice title=New Version::$NEW_VERSION"
+        echo "::notice title=Version Update::$OLD_VERSION -> $NEW_VERSION"
 
     - name: Update Project Version
       working-directory: ${{ env.PROJECT_DIR }}
@@ -99,23 +97,18 @@ jobs:
       working-directory: ${{ env.PROJECT_DIR }}
       run: mvn package -DskipTests -B --fail-fast
 
-    - name: maven-settings
-      if: github.event_name != 'pull_request'
-      uses: s4u/maven-settings-action@v3.1.0
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
       with:
-        path: ${{ env.PROJECT_DIR }}/settings.xml
-
-    - name: Deploy to Github Package Registry
-      if: github.event_name != 'pull_request'
-      working-directory: ${{ env.PROJECT_DIR }}
-      run: mvn deploy --settings settings.xml -DskipTests -B --fail-fast
+        name: myapp-${{ steps.semver.outputs.new_version }}-${{ github.run_number }}
+        path: ${{ env.PROJECT_DIR }}/target/myapp-*.jar
 
     - name: Commit & Push
       id: create_pr
       if: github.event_name != 'pull_request'
       run: |
         # Configure git with the devops username and email
-        git config --global user.name ${{ env.DEVOPS_USERNAME }}
+        git config --global user.name "${{ env.DEVOPS_USERNAME }}"
         git config --global user.email ${{ env.DEVOPS_EMAIL }}
         gh auth status
         new_version="${{ steps.semver.outputs.new_version }}"
@@ -127,30 +120,97 @@ jobs:
         git status
         git push origin $BRANCH_NAME
         pr_url=$(gh pr create \
-          --title "Bump version to $new_version" \
+          --title "Bump version to $new_version (${{ github.run_number }})" \
           --body "This PR bumps the version to $new_version" \
           --head "$BRANCH_NAME" \
           --base ${{ github.ref_name }})
         echo "pr_branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
         echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
-        echo "::notice title=PR URL::$pr_url"
+        echo "::notice title=PR::$pr_url"
 
-    - name: Wait on PR checks
+    - name: Merge PR
       if: github.event_name != 'pull_request'
       run: |
-        echo "Waiting for GitHub sync..."
+        echo "Waiting for checks to finish..."
         sleep 15
-        echo "Waiting for Pull-Request: ${{ steps.create_pr.outputs.pr_url }} status check(s)..."
-        output=$(timeout 45m gh pr checks --watch "${{ steps.create_pr.outputs.pr_url }}" 2>&1)
-        return_code=$?
-        echo "$output" | tail -n 10
-        if [[ $return_code -ne 0 ]]; then
-          error "Failed on waiting for status checks" $return_code
+        PR_NUMBER=$(echo "${{ steps.create_pr.outputs.pr_url }}" | grep -oE '[0-9]+$')
+        PR_MERGE_STATE=$(gh pr view "$PR_NUMBER" --json 'mergeStateStatus' --jq '.mergeStateStatus' )
+        PR_MERGEABLE=$(gh pr view "$PR_NUMBER" --json 'mergeable' --jq '.mergeable' )
+        echo "PR_MERGE_STATE=$PR_MERGE_STATE && PR_MERGEABLE=$PR_MERGEABLE"
+        if [[ "$PR_MERGE_STATE" == "CLEAN" && "$PR_MERGEABLE" == "MERGEABLE" ]]; then
+          echo "✅ PR is mergeable without conflicts."
+          if gh pr merge "$PR_NUMBER" --repo "${{ github.repository }}" --admin --merge --delete-branch; then
+            echo "✅ PR #$PR_NUMBER merged successfully!"
+            exit 0
+          fi
         fi
+        echo "❌ PR has merge conflicts or an unknown merge status: $PR_MERGE_STATE"
+        exit 1
 
-    - name: Automerge PR
-      if: github.event_name != 'pull_request'
+    - name: Cleanup
+      if: always()
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PR_URL: ${{ steps.create_pr.outputs.pr_url }}
+        BRANCH_NAME: ${{ steps.create_pr.outputs.pr_branch }}
       run: |
-        if ! gh pr merge "${{ steps.create_pr.outputs.pr_url }}" --repo "${{ github.repository }}"" --admin --merge --delete-branch; then
-          error "Merge failed! Please check for conflicts."
+        echo "Cleaning up GitHub PR and branch..."
+        # Check if PR exist and delete it
+        if [[ -n "$PR_URL" ]]; then
+          PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+          if [[ "$(gh pr view $PR_NUMBER --json 'closed' --jq '.closed')" == "false" ]] ; then 
+            gh pr close "$PR_NUMBER" --delete-branch --comment "${{ github.run_number }} - cleanup pr number $PR_NUMBER"
+            echo "✅ Deleted PR #$PR_NUMBER."
+          fi
         fi
+        # Check if branch exists and delete it
+        if [[ -n "$BRANCH_NAME" ]]; then
+          if gh api repos/${{ github.repository }}/branches/$BRANCH_NAME >/dev/null 2>&1; then
+            gh api -X DELETE repos/${{ github.repository }}/git/refs/heads/$BRANCH_NAME || echo "Failed to delete branch."
+            echo "✅ Deleted branch $BRANCH_NAME."
+          fi
+        fi
+        echo "Finished cleaning."
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download JAR Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: myapp-${{ needs.build.outputs.new_version }}-${{ github.run_number }}
+          path: ${{ env.PROJECT_DIR }}/target/
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image
+        working-directory: ${{ env.PROJECT_DIR }}
+        env:
+          IMAGE_TAG: ${{ needs.build.outputs.new_version }}
+        run: |
+          IMAGE="${{ vars.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}"
+          docker build --build-arg IMAGE_TAG="${{ env.IMAGE_TAG }}" -t $IMAGE .
+          echo "✅ Successfully built image: $IMAGE"
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
+      - name: Push Docker image
+        if: github.event_name != 'pull_request'
+        working-directory: ${{ env.PROJECT_DIR }}
+        env:
+          IMAGE: ${{ env.IMAGE }}
+        run: |
+          docker push $IMAGE
+          echo "✅ Successfully pushed image: $IMAGE"
+          echo "::notice title=Build Image::$IMAGE"
