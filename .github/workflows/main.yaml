@@ -116,8 +116,8 @@ jobs:
       # if: github.event_name != 'pull_request'
       run: |
         # Configure git with the devops username and email
-        git config --global user.name ${{ env.DEVOPS_USERNAME }}
-        git config --global user.email ${{ env.DEVOPS_EMAIL }}
+        git config --global user.name ${{ env.GITHUB_ACTOR }}
+        git config --global user.email ${{ secrets.GITHUB_TOKEN }}
 
         # Create a new branch for version bump
         BRANCH_NAME="bump-version-${{ steps.semver.outputs.new_version }}"
