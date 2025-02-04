@@ -121,11 +121,11 @@ jobs:
         git checkout -b $BRANCH_NAME
         git status
         git diff
-        git add ${{ env.PROJECT_DIR }}/pom.xml
-        git commit -m "Bump version to ${{ steps.semver.outputs.new_version }}"
         git config --global --list
         git config --global user.name "bot"
         git config --global user.email "${{ github.actor }}@github.com"
+        git add ${{ env.PROJECT_DIR }}/pom.xml
+        git commit -m "Bump version to ${{ steps.semver.outputs.new_version }}"
         git status
         git log --oneline --decorate --graph | head -n 5
 
