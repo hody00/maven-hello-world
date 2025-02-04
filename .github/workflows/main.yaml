@@ -143,6 +143,7 @@ jobs:
         PR_NUMBER=$(echo "${{ steps.create_pr.outputs.pr_url }}" | grep -oE '[0-9]+$')
         echo "PR_NUMBER=$PR_NUMBER"
         gh pr view "$PR_NUMBER" --json state
+        gh pr checks "$PR_NUMBER"
         echo "Waiting for Pull-Request: ${{ steps.create_pr.outputs.pr_url }} status check(s)..."
         output=$(timeout 45m gh pr checks --watch "$PR_NUMBER" 2>&1)
         return_code=$?
