@@ -117,26 +117,20 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         gh auth status
-        git config --global user.name "bot"
-        git config --global user.email "${{ github.actor }}@github.com"
+        # Configure git with the devops username and email
+        git config --global user.name "${{ github.actor }}"
+        git config --global user.email "$devops@myorg.com"
         BRANCH_NAME="bump-version-${{ steps.semver.outputs.new_version }}"
         git checkout -b $BRANCH_NAME
-        git status
         git diff
         git add ${{ env.PROJECT_DIR }}/pom.xml
         git commit -m "Bump version to ${{ steps.semver.outputs.new_version }}"
         git status
-        git log --oneline --decorate --graph | head -n 5
-
-    - name: Create PR
-      if: github.event_name != 'pull_request'
-      run: |
         git push origin $BRANCH_NAME
-        BRANCH_NAME="bump-version-${{ steps.semver.outputs.new_version }}"
         pr_url=$(gh pr create \
           --title "Bump version to ${{ steps.semver.outputs.new_version }}" \
           --body "This PR bumps the version to ${{ steps.semver.outputs.new_version }}." \
-          --head "bump-version-${{ steps.semver.outputs.new_version }}" \
+          --head "bump-version-$BRANCH_NAME" \
           --base master \
           --label "version-bump"
 
@@ -145,7 +139,7 @@ jobs:
         echo "::notice title=PR URL::$pr_url"
 
     - name: Wait on PR checks
-      if: github.event_name != 'pull_request'
+      # if: github.event_name != 'pull_request'
       run: |
         echo "Waiting for GitHub sync..."
         sleep 15
