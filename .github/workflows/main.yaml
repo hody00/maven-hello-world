@@ -61,7 +61,7 @@ jobs:
       id: semver
       working-directory: ${{ env.PROJECT_DIR }}
       run: |
-        old_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout -B --fail-fast)
+        OLD_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout -B --fail-fast)
         get_version() {
           mvn build-helper:parse-version help:evaluate -Dexpression="parsedVersion.$1" -q -DforceStdout -B --fail-fast
         }
@@ -70,10 +70,11 @@ jobs:
           minor)  major=$(get_version majorVersion); minor=$(get_version nextMinorVersion); patch=0 ;;
           *)      major=$(get_version majorVersion); minor=$(get_version minorVersion); patch=$(get_version nextIncrementalVersion);;
         esac
-        echo "old_version=$old_version" >> $GITHUB_OUTPUT
-        echo "new_version=$major.$minor.$patch" >> $GITHUB_OUTPUT
-        echo "::notice title=Old Version::$old_version"
-        echo "::notice title=New Version::$new_version"
+        echo "old_version=$OLD_VERSION" >> $GITHUB_OUTPUT
+        NEW_VERSION="$major.$minor.$patch"
+        echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "::notice title=Old Version::$OLD_VERSION"
+        echo "::notice title=New Version::$NEW_VERSION"
 
     - name: Update Project Version
       working-directory: ${{ env.PROJECT_DIR }}
@@ -97,6 +98,18 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: mvn package --settings settings.xml -DskipTests -B --fail-fast
+
+    - name: Debug
+      id: debug
+      working-directory: ${{ env.PROJECT_DIR }}
+      run: |
+        OLD_VERSION=${{ steps.semver.outputs.old_version }}
+        NEW_VERSION=${{ steps.semver.outputs.new_version }}
+        echo "$OLD_VERSION -> $NEW_VERSION"
+        ls -la
+        pwd
+        cat ${{ env.PROJECT_DIR }}/settings.xml
+        echo "${{ github.actor }} && ${{ secrets.GITHUB_TOKEN }} && ${{ env.GITHUB_ACTOR }} && ${{ env.GITHUB_TOKEN }}"
 
     - name: Deploy to Github Package Registry
       working-directory: ${{ env.PROJECT_DIR }}
