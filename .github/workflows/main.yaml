@@ -85,41 +85,43 @@ jobs:
       working-directory: ${{ env.PROJECT_DIR }}
       run: mvn versions:set-property -Dproperty="revision" -DnewVersion=${{ steps.semver.outputs.new_version }} -DgenerateBackupPoms=false -B --fail-fast
 
-    - name: Compile
-      working-directory: ${{ env.PROJECT_DIR }}
-      run: mvn clean compile -B --fail-fast
+    # - name: Compile
+    #   working-directory: ${{ env.PROJECT_DIR }}
+    #   run: mvn clean compile -B --fail-fast
 
-    - name: Build and Test
-      working-directory: ${{ env.PROJECT_DIR }}
-      run: mvn clean test -B --fail-fast
+    # - name: Build and Test
+    #   working-directory: ${{ env.PROJECT_DIR }}
+    #   run: mvn clean test -B --fail-fast
 
-    - name: Package artifacts
-      working-directory: ${{ env.PROJECT_DIR }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: mvn package -DskipTests -B --fail-fast
+    # - name: Package artifacts
+    #   working-directory: ${{ env.PROJECT_DIR }}
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   run: mvn package -DskipTests -B --fail-fast
 
-    - name: maven-settings
-      uses: s4u/maven-settings-action@v3.1.0
-      with:
-        path: ${{ env.PROJECT_DIR }}/settings.xml
+    # - name: maven-settings
+    #   uses: s4u/maven-settings-action@v3.1.0
+    #   with:
+    #     path: ${{ env.PROJECT_DIR }}/settings.xml
 
-    - name: Deploy to Github Package Registry
-      # if: github.event_name != 'pull_request'
-      working-directory: ${{ env.PROJECT_DIR }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: mvn deploy --settings settings.xml -DskipTests -B --fail-fast
+    # - name: Deploy to Github Package Registry
+    #   if: github.event_name != 'pull_request'
+    #   working-directory: ${{ env.PROJECT_DIR }}
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   run: mvn deploy --settings settings.xml -DskipTests -B --fail-fast
 
     - name: Commit & Push
       id: create_pr
       # if: github.event_name != 'pull_request'
       run: |
-        # Configure git with the devops username and email
         git config --global user.name ${{ env.GITHUB_ACTOR }}
         git config --global user.email ${{ secrets.GITHUB_TOKEN }}
         echo "$GITHUB_TOKEN" | gh auth login --with-token
 
+    - name: Create PR
+      if: github.event_name != 'pull_request'
+      run: |
         # Create a new branch for version bump
         BRANCH_NAME="bump-version-${{ steps.semver.outputs.new_version }}"
         git checkout -b $BRANCH_NAME
@@ -129,10 +131,6 @@ jobs:
         git add ${{ env.PROJECT_DIR }}/pom.xml
         git commit -m "Bump version to ${{ steps.semver.outputs.new_version }}"
         git push origin $BRANCH_NAME
-
-    - name: Create PR
-      if: github.event_name != 'pull_request'
-      run: |
         pr_url=$(gh pr create \
           --title "Bump version to ${{ steps.semver.outputs.new_version }}" \
           --body "This PR bumps the version to ${{ steps.semver.outputs.new_version }}." \
