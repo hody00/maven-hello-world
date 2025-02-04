@@ -76,7 +76,7 @@ jobs:
         echo "old_version=$OLD_VERSION" >> $GITHUB_OUTPUT
         NEW_VERSION="$major.$minor.$patch"
         # If the event is a pull request, append -SNAPSHOT
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+        if [[ "${{ github.ref_name }}" != "master" ]]; then
           NEW_VERSION="${NEW_VERSION}-SNAPSHOT"
         fi
         echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
@@ -127,7 +127,7 @@ jobs:
         git status
         git push origin $BRANCH_NAME
         pr_url=$(gh pr create \
-          --title "Bump version to $new_version" \
+          --title "Bump version to $new_version (${{ github.run_number }})" \
           --body "This PR bumps the version to $new_version" \
           --head "$BRANCH_NAME" \
           --base ${{ github.ref_name }})
