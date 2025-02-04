@@ -53,9 +53,10 @@ jobs:
         cache-dependency-path: "${{ env.PROJECT_DIR }}/pom.xml"
 
     - name: Setup GH CLI
-      uses: dev-hanz-ops/install-gh-cli-action@v0.2.1
+      uses: sersoft-gmbh/setup-gh-cli-action@v2
       with:
-        gh-cli-version: 2.66.1
+        version: 2.66.1
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Version Control
       id: semver
@@ -117,9 +118,9 @@ jobs:
         # Configure git with the devops username and email
         git config --global user.name ${{ env.DEVOPS_USERNAME }}
         git config --global user.email ${{ env.DEVOPS_EMAIL }}
-        
+
         # Create a new branch for version bump
-        BRANCH_NAME="bump-version-${{ steps.semver.outputs.new_version }}-${{ github.run_number }}"
+        BRANCH_NAME="bump-version-${{ steps.semver.outputs.new_version }}"
         git checkout -b $BRANCH_NAME
 
         # Commit and push changes
