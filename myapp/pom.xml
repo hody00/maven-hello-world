@@ -95,4 +95,12 @@
       </plugins>
     </pluginManagement>
   </build>
+
+<distributionManagement>
+  <repository>
+    <id>github</id>
+    <name>maven-hello-world</name>
+    <url>https://maven.pkg.github.com/hody00/maven-hello-world</url>
+  </repository>
+</distributionManagement>
 </project>

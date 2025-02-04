@@ -1,0 +1,162 @@
+name: MyApp CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '.github/**'
+      - 'README.md'
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - '.github/**'
+      - 'README.md'
+  workflow_dispatch:
+    inputs:
+      version_increment:
+        description: 'Version to increment (major, minor, patch)'
+        required: false
+        default: 'patch'
+        type: choice
+        options: [ 'major', 'minor', 'patch' ]
+
+env:
+  PROJECT_DIR: myapp
+  VERSION_INCREMENT: ${{ github.event.inputs.version_increment || 'patch' }}
+  DEVOPS_USERNAME: "GitHub Actions Bot"
+  DEVOPS_EMAIL: "devops[bot]@my.org.com"
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+    outputs:
+      projects: ${{ steps.semver.outputs.old_version }}
+      date_tag: ${{ steps.semver.outputs.new_version }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: 'maven'
+        cache-dependency-path: "${{ env.PROJECT_DIR }}/pom.xml"
+
+    - name: Setup GH CLI
+      uses: dev-hanz-ops/install-gh-cli-action@v0.2.1
+      with:
+        gh-cli-version: 2.66.1
+
+    - name: Version Control
+      id: semver
+      working-directory: ${{ env.PROJECT_DIR }}
+      run: |
+        OLD_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout -B --fail-fast)
+        get_version() {
+          mvn build-helper:parse-version help:evaluate -Dexpression="parsedVersion.$1" -q -DforceStdout -B --fail-fast
+        }
+        case "${{ env.VERSION_INCREMENT }}" in
+          major)  major=$(get_version nextMajorVersion); minor=0; patch=0 ;;
+          minor)  major=$(get_version majorVersion); minor=$(get_version nextMinorVersion); patch=0 ;;
+          *)      major=$(get_version majorVersion); minor=$(get_version minorVersion); patch=$(get_version nextIncrementalVersion);;
+        esac
+        echo "old_version=$OLD_VERSION" >> $GITHUB_OUTPUT
+        echo "new_version=$major.$minor.$patch" >> $GITHUB_OUTPUT
+        echo "::notice title=Old Version::$old_version"
+        echo "::notice title=New Version::$new_version"
+
+    - name: Update Project Version
+      working-directory: ${{ env.PROJECT_DIR }}
+      run: mvn versions:set -DnewVersion=${{ steps.semver.outputs.new_version }} -DgenerateBackupPoms=false -B --fail-fast
+
+    - name: Compile
+      working-directory: ${{ env.PROJECT_DIR }}
+      run: mvn clean compile -B --fail-fast
+
+    - name: Build and Test
+      working-directory: ${{ env.PROJECT_DIR }}
+      run: mvn clean test -B --fail-fast
+
+    - name: maven-settings
+      uses: s4u/maven-settings-action@v3
+      with:
+        path: ${{ env.PROJECT_DIR }}/settings.xml
+
+    - name: Package artifact
+      working-directory: ${{ env.PROJECT_DIR }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: mvn package --settings settings.xml -DskipTests -B --fail-fast
+
+    - name: Deploy to Github Package Registry
+      if: github.event_name != 'pull_request'
+      working-directory: ${{ env.PROJECT_DIR }}
+      run:
+        mvn deploy --settings settings.xml -DskipTests -B --fail-fast
+
+    # - name: Upload artifact
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: application-jar-${{ steps.semver.outputs.new_version }}-${{ github.run_number }}
+    #     path: ${{ env.PROJECT_DIR }}/target/*.jar
+
+    - name: Create PR
+      id: create_pr
+      if: github.event_name != 'pull_request'
+      run: |
+        # Configure git with the devops username and email
+        git config --global user.name ${{ env.DEVOPS_USERNAME }}
+        git config --global user.email ${{ env.DEVOPS_EMAIL }}
+        
+        # Create a new branch for version bump
+        BRANCH_NAME="bump-version-${{ steps.semver.outputs.new_version }}-${{ github.run_number }}"
+        git checkout -b $BRANCH_NAME
+
+        # Commit and push changes
+        git status
+        git diff
+        git add ${{ env.PROJECT_DIR }}/pom.xml
+        git commit -m "Bump version to ${{ steps.semver.outputs.new_version }}"
+        git push origin $BRANCH_NAME
+
+        # Create a pull request to master
+        pr_url=$(gh pr create \
+          --title "Bump version to ${{ steps.semver.outputs.new_version }}" \
+          --body "This PR bumps the version to ${{ steps.semver.outputs.new_version }}." \
+          --head $BRANCH_NAME \
+          --base master \
+          --label "version-bump"
+
+        echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
+        echo "pr_branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+        echo "::notice title=PR URL::$pr_url"
+
+    - name: Wait on PR checks
+      if: github.event_name != 'pull_request'
+      run: |
+        echo "Waiting for GitHub sync..."
+        sleep 15
+        echo "Waiting for Pull-Request: ${{ steps.create_pr.outputs.pr_url }} status check(s)..."
+        output=$(timeout 45m gh pr checks --watch "${{ steps.create_pr.outputs.pr_url }}" 2>&1)
+        return_code=$?
+        echo "$output" | tail -n 10
+        if [[ $return_code -ne 0 ]]; then
+          error "Failed on waiting for status checks" $return_code
+        fi
+
+    - name: Automerge PR
+      if: github.event_name != 'pull_request'
+      run: |
+        if ! gh pr merge "${{ steps.create_pr.outputs.pr_branch }}" --repo "${{ github.repository }}"" --admin --merge --delete-branch; then
+          error "Failed on merging a Pull-Request"
+        fi
