@@ -117,13 +117,12 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         gh auth status
+        git config --global user.name "bot"
+        git config --global user.email "${{ github.actor }}@github.com"
         BRANCH_NAME="bump-version-${{ steps.semver.outputs.new_version }}"
         git checkout -b $BRANCH_NAME
         git status
         git diff
-        git config --global --list
-        git config --global user.name "bot"
-        git config --global user.email "${{ github.actor }}@github.com"
         git add ${{ env.PROJECT_DIR }}/pom.xml
         git commit -m "Bump version to ${{ steps.semver.outputs.new_version }}"
         git status
