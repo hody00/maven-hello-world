@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.global.appName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Values.global.appName }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.global.appName }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.global.appName }}
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.image.pullSecret }}
+      containers:
+        - name: run-app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          workingDir: {{ .Values.container.workingDir }}
+          {{- if .Values.command.entryPoint }}
+          command: {{ .Values.command.entryPoint }}
+          {{- end }}
+          {{- if .Values.command.cmdArgs }}
+          args:
+            {{ toYaml .Values.command.cmdArgs | nindent 12 }} 
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: app-config
+              mountPath: {{ .Values.container.workingDir }}/app.properties
+              subPath: app.properties # can be set to dev.properties / prod.properties depends on the environment
+      volumes:
+        - name: app-config
+          configMap:
+            name: {{ .Values.global.appName }}-config
+
+      {{- with .Values.nodeAssignment.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeAssignment.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeAssignment.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -6,6 +6,8 @@ ENV IMAGE_TAG=${IMAGE_TAG:-latest}
 
 LABEL RELEASE_VERSION="${IMAGE_TAG}"
 
+EXPOSE 8080
+
 # Non-root user for security
 RUN addgroup --system maven && adduser --system --ingroup maven hello
 USER hello

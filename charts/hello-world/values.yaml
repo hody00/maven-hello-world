@@ -1,0 +1,57 @@
+global:
+  appName: maven-hello-world
+
+image:
+  repository: hody00/maven-hello-world
+  tag: 1.0.0
+  pullSecret: dockerhub-secret
+
+container:
+  workingDir: /app
+  port: 8080
+
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "200m"
+
+# Application arguments and entrypoint override (only used if explicitly set)
+command:
+  entryPoint: null
+  # entryPoint: ["/bin/sh"]
+  cmdArgs: null
+  # cmdArgs:
+  #   - -c
+  #   - |
+  #     sleep 300s
+  #     java -jar myapp.jar "test"
+
+# app.properties content to be mounted in the container
+appProperties: |
+  app.message=Helm properties file!
+
+nodeAssignment:
+  affinity: {}
+  # affinity:
+  #   nodeAffinity:
+  #     requiredDuringSchedulingIgnoredDuringExecution:
+  #       nodeSelectorTerms:
+  #         - matchExpressions:
+  #             - key: lke.linode.com/pool
+  #               operator: In
+  #               values:
+  #                 - "test"
+  nodeSelector: {}
+  # nodeSelector:
+  #   pool-name: test
+  tolerations: []
+  # tolerations:
+  #   - key: "app"
+  #     value: "test"
+  #     effect: "NoSchedule"
+  #     operator: "Equal"
+
+

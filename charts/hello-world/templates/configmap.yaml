@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.global.appName }}-config
+  namespace: {{ .Release.Namespace }}
+data:
+  app.properties: |
+    {{ .Values.appProperties | nindent 4 }}

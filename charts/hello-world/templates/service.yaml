@@ -1,0 +1,14 @@
+# didn't had enough time to debug the service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.global.appName }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: {{ .Values.container.port }}
+  selector:
+    app: {{ .Values.global.appName }}
