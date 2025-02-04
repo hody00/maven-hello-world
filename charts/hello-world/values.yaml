@@ -53,5 +53,3 @@ nodeAssignment:
   #     value: "test"
   #     effect: "NoSchedule"
   #     operator: "Equal"
-
-

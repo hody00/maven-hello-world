@@ -33,7 +33,7 @@ spec:
           volumeMounts:
             - name: app-config
               mountPath: {{ .Values.container.workingDir }}/app.properties
-              subPath: app.properties # can be set to dev.properties / prod.properties depends on the environment
+              subPath: app.properties
       volumes:
         - name: app-config
           configMap:
