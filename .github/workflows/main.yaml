@@ -111,29 +111,28 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: mvn deploy --settings settings.xml -DskipTests -B --fail-fast
 
-    - name: Configure git
+    - name: Commit & Push
       id: create_pr
       # if: github.event_name != 'pull_request'
       run: |
         # Configure git with the devops username and email
         git config --global user.name ${{ env.GITHUB_ACTOR }}
         git config --global user.email ${{ secrets.GITHUB_TOKEN }}
+        echo "$GITHUB_TOKEN" | gh auth login --with-token
 
         # Create a new branch for version bump
         BRANCH_NAME="bump-version-${{ steps.semver.outputs.new_version }}"
-        echo "BRANCH_NAME"
+        git checkout -b $BRANCH_NAME
         # Commit and push changes
         git status
         git diff
-
+        git add ${{ env.PROJECT_DIR }}/pom.xml
+        git commit -m "Bump version to ${{ steps.semver.outputs.new_version }}"
+        git push origin $BRANCH_NAME
 
     - name: Create PR
       if: github.event_name != 'pull_request'
       run: |
-        git checkout -b $BRANCH_NAME
-        git add ${{ env.PROJECT_DIR }}/pom.xml
-        git commit -m "Bump version to ${{ steps.semver.outputs.new_version }}"
-        git push origin $BRANCH_NAME
         pr_url=$(gh pr create \
           --title "Bump version to ${{ steps.semver.outputs.new_version }}" \
           --body "This PR bumps the version to ${{ steps.semver.outputs.new_version }}." \
