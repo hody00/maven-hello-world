@@ -11,7 +11,7 @@ RUN addgroup --system maven && adduser --system --ingroup maven hello
 USER hello
 
 # Copy the pre-built JAR from the CI/CD pipeline and app.properties file if exist
-COPY "target/$JAR_FILE" "myapp.jar"
+COPY "artifacts/$JAR_FILE" "myapp.jar"
 RUN if [ "$COPY_APP_PROPERTIES" = "true" ]; then cp app.properties app.properties; fi
 
 # ENTRYPOINT ["sh", "-c", "sleep 300"]
