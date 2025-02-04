@@ -187,7 +187,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: myapp-${{ needs.build.outputs.new_version }}-${{ github.run_number }}
-          path: ${{ env.PROJECT_DIR }}/artifacts/
+          path: ${{ env.PROJECT_DIR }}/target/
 
       - name: Log in to DockerHub
         uses: docker/login-action@v3
