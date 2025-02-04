@@ -105,7 +105,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run:
-        mvn deploy --settings settings.xml -Drevision="${{ steps.semver.outputs.new_version }}-${{ github.run_id }}" -DskipTests -B --fail-fast
+        mvn deploy --settings settings.xml -Dproject.version="${{ steps.semver.outputs.new_version }}-${{ github.run_id }}" -DskipTests -B --fail-fast
 
     - name: Create PR
       id: create_pr
