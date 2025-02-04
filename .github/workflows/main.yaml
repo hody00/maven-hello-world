@@ -89,13 +89,13 @@ jobs:
       working-directory: ${{ env.PROJECT_DIR }}
       run: mvn clean compile -B --fail-fast
 
-    - name: Build and Test
-      working-directory: ${{ env.PROJECT_DIR }}
-      run: mvn clean test -B --fail-fast
-
-    - name: Package artifacts
+    - name: Package
       working-directory: ${{ env.PROJECT_DIR }}
       run: mvn package -DskipTests -B --fail-fast
+
+    - name: Test
+      working-directory: ${{ env.PROJECT_DIR }}
+      run: mvn test -DjarFilePath=target/myapp-${{ steps.semver.outputs.new_version }}.jar -B --fail-fast 
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
