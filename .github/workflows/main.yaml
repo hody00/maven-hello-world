@@ -200,12 +200,8 @@ jobs:
         env:
           IMAGE_TAG: ${{ needs.build.outputs.new_version }}
         run: |
-          FILE_EXIST="false"
-          if [ -f "./app.properties" ]; then
-            FILE_EXIST="true"
-          fi
           IMAGE="${{ vars.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}"
-          docker build --build-arg COPY_APP_PROPERTIES="${FILE_EXIST}" --build-arg IMAGE_TAG="${{ env.IMAGE_TAG }}" -t $IMAGE .
+          docker build --build-arg IMAGE_TAG="${{ env.IMAGE_TAG }}" -t $IMAGE .
           echo "✅ Successfully built image: $IMAGE"
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
