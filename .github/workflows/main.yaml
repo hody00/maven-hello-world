@@ -108,11 +108,13 @@ jobs:
         echo "$OLD_VERSION -> $NEW_VERSION"
         ls -la
         pwd
-        cat ${{ env.PROJECT_DIR }}/settings.xml
+        cat settings.xml
         echo "${{ github.actor }} && ${{ secrets.GITHUB_TOKEN }} && ${{ env.GITHUB_ACTOR }} && ${{ env.GITHUB_TOKEN }}"
 
     - name: Deploy to Github Package Registry
       working-directory: ${{ env.PROJECT_DIR }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run:
         mvn deploy --settings settings.xml -DskipTests -B --fail-fast
 
