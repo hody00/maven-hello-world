@@ -6,7 +6,7 @@
 
   <groupId>com.myapp</groupId>
   <artifactId>myapp</artifactId>
-  <version>1.0.0</version>
+  <version>${revision}</version>
 
   <name>myapp</name>
   <!-- FIXME change it to the project's website -->
@@ -16,6 +16,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
+    <revision>1.0.0</revision>
   </properties>
 
   <dependencies>

@@ -78,7 +78,7 @@ jobs:
 
     - name: Update Project Version
       working-directory: ${{ env.PROJECT_DIR }}
-      run: mvn versions:set -DnewVersion=${{ steps.semver.outputs.new_version }} -DgenerateBackupPoms=false -B --fail-fast
+      run: mvn versions:set-property -Dproperty="revision" -DnewVersion=${{ steps.semver.outputs.new_version }} -DgenerateBackupPoms=false -B --fail-fast
 
     - name: Compile
       working-directory: ${{ env.PROJECT_DIR }}
@@ -105,7 +105,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run:
-        mvn deploy --settings settings.xml -Dproject.version="${{ steps.semver.outputs.new_version }}-${{ github.run_id }}" -DskipTests -B --fail-fast
+        mvn deploy --settings settings.xml -Dproject.revision="${{ steps.semver.outputs.new_version }}-${{ github.run_number }}" -DskipTests -B --fail-fast
 
     - name: Create PR
       id: create_pr
