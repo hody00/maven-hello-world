@@ -125,11 +125,13 @@ jobs:
         git diff
         git add ${{ env.PROJECT_DIR }}/pom.xml
         git commit -m "Bump version to ${{ steps.semver.outputs.new_version }}"
-        git push origin $BRANCH_NAME
+        git status
+        git log --oneline --decorate --graph | head -n 5
 
     - name: Create PR
       if: github.event_name != 'pull_request'
       run: |
+        git push origin $BRANCH_NAME
         BRANCH_NAME="bump-version-${{ steps.semver.outputs.new_version }}"
         pr_url=$(gh pr create \
           --title "Bump version to ${{ steps.semver.outputs.new_version }}" \
