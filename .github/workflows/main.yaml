@@ -115,10 +115,7 @@ jobs:
     - name: Check GH CLI Authentication
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        gh auth status
-        echo "$GH_TOKEN" | gh auth login --with-token
-        gh auth status
+      run: gh auth status
 
     - name: Commit & Push
       id: create_pr
