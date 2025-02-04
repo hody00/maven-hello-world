@@ -116,7 +116,7 @@ jobs:
       run: |
         gh auth status
         # Configure git with the devops username and email
-        git config --global user.name ${{ env.DEVOPS_USERNAME }}
+        git config --global user.name "${{ env.DEVOPS_USERNAME }}"
         git config --global user.email ${{ env.DEVOPS_EMAIL }}
         gh auth status
         new_version="${{ steps.semver.outputs.new_version }}"
