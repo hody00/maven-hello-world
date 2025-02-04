@@ -112,17 +112,28 @@ jobs:
     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     #   run: mvn deploy --settings settings.xml -DskipTests -B --fail-fast
 
+    - name: Check GH CLI Authentication
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh auth status
+        echo "$GH_TOKEN" | gh auth login --with-token
+        gh auth status
+
     - name: Commit & Push
       id: create_pr
       # if: github.event_name != 'pull_request'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        git config --global user.name ${{ env.GITHUB_ACTOR }}
-        git config --global user.email ${{ secrets.GITHUB_TOKEN }}
         echo "$GITHUB_TOKEN" | gh auth login --with-token
+        gh auth status
 
     - name: Create PR
       if: github.event_name != 'pull_request'
       run: |
+        git config --global user.name ${{ env.GITHUB_ACTOR }}
+        git config --global user.email ${{ secrets.GITHUB_TOKEN }}
         # Create a new branch for version bump
         BRANCH_NAME="bump-version-${{ steps.semver.outputs.new_version }}"
         git checkout -b $BRANCH_NAME
