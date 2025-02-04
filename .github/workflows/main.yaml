@@ -114,6 +114,7 @@ jobs:
       id: create_pr
       if: github.event_name != 'pull_request'
       run: |
+        gh auth status
         # Configure git with the devops username and email
         git config --global user.name ${{ env.DEVOPS_USERNAME }}
         git config --global user.email ${{ env.DEVOPS_EMAIL }}
@@ -126,6 +127,10 @@ jobs:
         git commit --allow-empty -m "Bump version to $new_version"
         git status
         git push origin $BRANCH_NAME
+
+    - name: Wait on PR checks
+      if: github.event_name != 'pull_request'
+      run: |
         pr_url=$(gh pr create \
           --title "Bump version to $new_version (${{ github.run_number }})" \
           --body "This PR bumps the version to $new_version" \
@@ -134,10 +139,6 @@ jobs:
         echo "pr_branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
         echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
         echo "::notice title=PR URL::$pr_url"
-
-    - name: Wait on PR checks
-      if: github.event_name != 'pull_request'
-      run: |
         echo "Waiting for GitHub sync..."
         sleep 15
         echo "Waiting for Pull-Request: ${{ steps.create_pr.outputs.pr_url }} status check(s)..."
