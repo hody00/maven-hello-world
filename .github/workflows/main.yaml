@@ -61,7 +61,7 @@ jobs:
       id: semver
       working-directory: ${{ env.PROJECT_DIR }}
       run: |
-        OLD_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout -B --fail-fast)
+        old_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout -B --fail-fast)
         get_version() {
           mvn build-helper:parse-version help:evaluate -Dexpression="parsedVersion.$1" -q -DforceStdout -B --fail-fast
         }
@@ -70,7 +70,7 @@ jobs:
           minor)  major=$(get_version majorVersion); minor=$(get_version nextMinorVersion); patch=0 ;;
           *)      major=$(get_version majorVersion); minor=$(get_version minorVersion); patch=$(get_version nextIncrementalVersion);;
         esac
-        echo "old_version=$OLD_VERSION" >> $GITHUB_OUTPUT
+        echo "old_version=$old_version" >> $GITHUB_OUTPUT
         echo "new_version=$major.$minor.$patch" >> $GITHUB_OUTPUT
         echo "::notice title=Old Version::$old_version"
         echo "::notice title=New Version::$new_version"
@@ -99,7 +99,6 @@ jobs:
       run: mvn package --settings settings.xml -DskipTests -B --fail-fast
 
     - name: Deploy to Github Package Registry
-      if: github.event_name != 'pull_request'
       working-directory: ${{ env.PROJECT_DIR }}
       run:
         mvn deploy --settings settings.xml -DskipTests -B --fail-fast
