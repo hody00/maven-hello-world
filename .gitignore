@@ -21,3 +21,7 @@ target/
 /.maven
 /.repository
 .flattened-pom.xml
+
+# Local #
+.myapp
+notes*
