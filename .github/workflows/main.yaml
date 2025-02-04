@@ -152,14 +152,6 @@ jobs:
         echo "❌ PR has merge conflicts or an unknown merge status: $PR_MERGE_STATE"
         exit 1
 
-    - name: clean debug
-      if: failure() && steps.create_pr.outcome != 'success'
-      run: |
-        echo "Run action-slack"
-        echo "Result of 'Commit & Push' step was '${{ steps.create_pr.outcome }}'"
-        echo "pr url: ${{ steps.create_pr.outputs.pr_url }}"
-        echo "pr branch: ${{ steps.create_pr.outputs.pr_branch }}"
-
     - name: Cleanup
       if: always()
       env:
@@ -171,8 +163,10 @@ jobs:
         # Check if PR exist and delete it
         if [[ -n "$PR_URL" ]]; then
           PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
-          gh pr close "$PR_NUMBER" --delete-branch || echo "Failed to close PR."
-          echo "✅ Deleted PR #$PR_NUMBER."
+          if [[ "$(gh pr view $PR_NUMBER --json 'closed' --jq '.closed')" == "false" ]] ; then 
+            gh pr close "$PR_NUMBER" --delete-branch --comment "${{ github.run_number }} - cleanup pr number $PR_NUMBER"
+            echo "✅ Deleted PR #$PR_NUMBER."
+          fi
         fi
         # Check if branch exists and delete it
         if [[ -n "$BRANCH_NAME" ]]; then
