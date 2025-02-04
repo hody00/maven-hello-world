@@ -133,7 +133,7 @@ jobs:
           --body "This PR bumps the version to $new_version" \
           --head "$BRANCH_NAME" \
           --base master \
-          --label "version-bump"
+          --label "version-bump")
         echo "pr_branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
         echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
         echo "::notice title=PR URL::$pr_url"
