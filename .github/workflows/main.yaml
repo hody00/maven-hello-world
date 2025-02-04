@@ -111,7 +111,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: mvn deploy --settings settings.xml -DskipTests -B --fail-fast
 
-    - name: Create PR
+    - name: Configure git
       id: create_pr
       # if: github.event_name != 'pull_request'
       run: |
@@ -122,19 +122,18 @@ jobs:
         # Create a new branch for version bump
         BRANCH_NAME="bump-version-${{ steps.semver.outputs.new_version }}"
         git checkout -b $BRANCH_NAME
-
         # Commit and push changes
         git status
         git diff
-        git add ${{ env.PROJECT_DIR }}/pom.xml
-        git commit -m "Bump version to ${{ steps.semver.outputs.new_version }}"
-        git push origin $BRANCH_NAME
 
-        # Create a pull request to master
+
+    - name: Create PR
+      if: github.event_name != 'pull_request'
+      run: |
         pr_url=$(gh pr create \
           --title "Bump version to ${{ steps.semver.outputs.new_version }}" \
           --body "This PR bumps the version to ${{ steps.semver.outputs.new_version }}." \
-          --head $BRANCH_NAME \
+          --head "bump-version-${{ steps.semver.outputs.new_version }}" \
           --base master \
           --label "version-bump"
 
@@ -143,7 +142,7 @@ jobs:
         echo "::notice title=PR URL::$pr_url"
 
     - name: Wait on PR checks
-      # if: github.event_name != 'pull_request'
+      if: github.event_name != 'pull_request'
       run: |
         echo "Waiting for GitHub sync..."
         sleep 15
