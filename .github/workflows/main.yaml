@@ -72,6 +72,10 @@ jobs:
         esac
         echo "old_version=$OLD_VERSION" >> $GITHUB_OUTPUT
         NEW_VERSION="$major.$minor.$patch"
+        # If the event is a pull request, append -SNAPSHOT
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          NEW_VERSION="${NEW_VERSION}-SNAPSHOT"
+        fi
         echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
         echo "::notice title=Old Version::$OLD_VERSION"
         echo "::notice title=New Version::$NEW_VERSION"
@@ -104,8 +108,7 @@ jobs:
       working-directory: ${{ env.PROJECT_DIR }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run:
-        mvn deploy --settings settings.xml -Dproject.revision="${{ steps.semver.outputs.new_version }}-${{ github.run_number }}" -DskipTests -B --fail-fast
+      run: mvn deploy --settings settings.xml -DskipTests -B --fail-fast
 
     - name: Create PR
       id: create_pr
