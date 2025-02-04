@@ -36,6 +36,7 @@ jobs:
       contents: write
       id-token: write
       packages: write
+      pull-requests: write
     outputs:
       projects: ${{ steps.semver.outputs.old_version }}
       date_tag: ${{ steps.semver.outputs.new_version }}
