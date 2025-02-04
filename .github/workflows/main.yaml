@@ -159,3 +159,11 @@ jobs:
         if ! gh pr merge "${{ steps.create_pr.outputs.pr_url }}" --repo "${{ github.repository }}"" --admin --merge --delete-branch; then
           error "Merge failed! Please check for conflicts."
         fi
+
+    - name: action-slack
+      if: failure() && steps.create_pr.outcome != 'success'
+      run: |
+        echo "Run action-slack"
+        echo "Result of 'Commit & Push' step was '${{ steps.create_pr.outcome }}'"
+        echo "pr url: ${{ steps.create_pr.outputs.pr_url }}"
+        echo "pr branch: #BRANCH_NAME"
