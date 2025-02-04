@@ -106,7 +106,7 @@ jobs:
     - name: Deploy to Github Package Registry
       if: github.event_name != 'pull_request'
       working-directory: ${{ env.PROJECT_DIR }}
-      run: mvn deploy --settings settings.xml -DskipTests -B --fail-fast
+      run: mvn deploy --settings settings.xml -DskipTests -Dpackaging=jar -B --fail-fast
 
     - name: Commit & Push
       id: create_pr
