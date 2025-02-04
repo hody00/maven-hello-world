@@ -1,0 +1,2 @@
+# Ensure only DevOps can make changes to the .github folder
+/.github/ @hody00
